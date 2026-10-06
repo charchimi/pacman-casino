@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pac-Casino</title>
+<style>
+  :root{--gold:#f7b92b;--green:#10c070;--red:#ff3b3b;--bg:#000;--panel:#14110a}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:#fff;font-family:"Segoe UI",Tahoma,sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh}
+  #wrap{position:relative;width:min(100vw,calc((100vh - 8px)*992/672));margin-top:4px}
+  canvas{width:100%;display:block;background:#000;touch-action:none}
+  #hud{position:absolute;top:0;right:0;background:var(--red);border-radius:0 0 0 14px;padding:4px 18px 4px 10px;display:flex;align-items:center;gap:8px;font:700 clamp(16px,3.2vw,30px) "Courier New",monospace;letter-spacing:2px}
+  #hud img{width:1.3em;height:1.3em}
+  #hint{position:absolute;left:10px;top:6px;font-size:clamp(10px,1.6vw,14px);color:#9a9;opacity:.8;pointer-events:none}
+  #msg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font:700 clamp(18px,4vw,36px) sans-serif;color:var(--gold);text-shadow:0 0 12px #000;pointer-events:none;opacity:0;transition:opacity .3s;text-align:center}
+  #lives{position:absolute;left:12px;top:8px;display:flex;gap:6px;pointer-events:none}
+  .life{width:clamp(16px,2.6vw,26px);aspect-ratio:1;border-radius:50%;background:conic-gradient(from 135deg,#ff2a2a 0 270deg,transparent 270deg 360deg);transform:rotate(-45deg)}
+  .life.lost{opacity:.2;filter:grayscale(1)}
+  .screen{position:fixed;inset:0;background:rgba(0,0,0,.95);display:none;align-items:center;justify-content:center;z-index:20;padding:10px;font-family:Georgia,"Segoe UI",Tahoma,serif}
+  .screen.on{display:flex}
+  .screen .box{text-align:center;width:min(680px,100%)}
+  .screen h1{margin:4px 0 2px;color:var(--mustard);font-size:clamp(30px,6vw,52px);letter-spacing:8px;font-weight:900}
+  .screen .sub{margin:0 0 12px;color:#cbbf9c}
+  .decor{display:flex;justify-content:center;align-items:flex-end;gap:14px;margin:8px 0 14px}
+  .decor img{height:clamp(60px,14vw,120px);width:auto}
+  .rules{list-style:none;padding:0;margin:0 auto 18px;max-width:520px;text-align:left;line-height:1.7}
+  .rules li{padding-left:22px;position:relative}
+  .rules li::before{content:"";position:absolute;left:2px;top:.65em;width:10px;height:10px;border-radius:50%;background:var(--mustard);border:2px solid var(--ink)}
+  .rules b{color:var(--mustard)}
+  .sumrows{max-width:420px;margin:12px auto;text-align:left}
+  .sumrows div{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:2px dashed #4a3f1c}
+  .final{display:flex;align-items:center;justify-content:center;gap:12px;margin:14px 0;font:700 clamp(34px,7vw,56px) "Courier New",monospace;color:var(--cream)}
+  .final img{width:1.1em;height:1.1em}
+  .newbest{color:#9be07a;font-weight:700;min-height:1.4em}
+  .pos{color:#9be07a}.neg{color:#ff7a6b}
+  /* casino */
+  :root{--cream:#f0e4c8;--ink:#14110a;--mustard:#e8a825;--sage:#8da27d;--brick:#c0392b;--navy:#2d4b73}
+  #casino{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;z-index:10;padding:10px;font-family:Georgia,"Segoe UI",Tahoma,serif}
+  #casino.on{display:flex}
+  .box{position:relative;background:#0b0a07;border:4px solid var(--cream);border-radius:22px;width:min(860px,100%);max-height:100%;overflow:auto;padding:22px 24px;color:var(--cream)}
+  .box::before{content:"";position:absolute;inset:7px;border:3px dashed var(--green);border-radius:16px;pointer-events:none;opacity:.8}
+  .top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  h2{margin:0;color:var(--mustard);font-size:30px;letter-spacing:6px;font-weight:900}
+  .bal{display:flex;align-items:center;gap:8px;background:var(--brick);border:3px solid var(--ink);box-shadow:3px 3px 0 var(--cream);border-radius:12px;padding:3px 14px 3px 8px;font:700 24px "Courier New",monospace;letter-spacing:2px}
+  .bal img{width:30px;height:30px}
+  .tabs{display:flex;gap:8px;margin:16px 0 12px;flex-wrap:wrap}
+  button{font:inherit;font-weight:700;cursor:pointer;border-radius:10px;padding:8px 14px;background:var(--cream);color:var(--ink);border:3px solid var(--ink);box-shadow:3px 3px 0 #000,0 0 0 1px var(--cream);transition:transform .08s,box-shadow .08s}
+  button:hover:not(:disabled){filter:brightness(1.08)}
+  button:active:not(:disabled){transform:translate(3px,3px);box-shadow:0 0 0 #000}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  .tabs button{display:flex;align-items:center;gap:8px;background:#26200f;color:var(--cream);border-color:#6b5a2a}
+  .tabs button img{height:28px;width:auto}
+  .tabs button.act{background:var(--mustard);color:var(--ink);border-color:var(--ink)}
+  button.go{background:var(--sage);padding:11px 28px;font-size:18px}
+  button.exit{background:var(--brick);color:var(--cream)}
+  .bet{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:12px 0 4px;background:#1b1710;border:2px solid #4a3f1c;padding:8px 10px;border-radius:12px}
+  .bet b{margin-right:4px}
+  .bet input{width:110px;font:700 20px "Courier New",monospace;padding:5px 8px;border-radius:8px;border:3px solid var(--ink);background:var(--cream);color:var(--ink);text-align:right}
+  .bet button{padding:5px 10px;font-size:14px}
+  .game{display:none;gap:18px;align-items:center;min-height:250px}
+  .game.on{display:flex}
+  .art{flex:0 0 210px;text-align:center}
+  .art img{width:100%;display:block;border-radius:10px}
+  .play{flex:1;text-align:center;min-width:0}
+  .res{min-height:34px;margin:12px 0 2px;font-size:20px;font-weight:700;text-align:center}
+  .win{color:#9be07a}.lose{color:#ff7a6b}.push{color:#ccc}
+  .reels{display:flex;gap:10px;justify-content:center;margin:0 0 16px;padding:12px;background:var(--mustard);border:4px solid var(--ink);border-radius:14px;box-shadow:4px 4px 0 var(--cream)}
+  .reel{width:84px;height:96px;background:var(--cream);border-radius:10px;border:3px solid var(--ink);display:flex;align-items:center;justify-content:center;box-shadow:inset 0 0 14px #0004}
+  .reel svg{width:62px;height:62px}
+  .pay{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;font-size:13px;color:#cbbf9c;margin-top:12px}
+  .pay span{display:flex;align-items:center;gap:3px}.pay svg{width:20px;height:20px}
+  .badge{display:inline-block;min-width:96px;padding:4px 16px;margin-top:8px;border:3px solid var(--ink);border-radius:12px;font:700 40px "Courier New",monospace;box-shadow:3px 3px 0 var(--cream);background:#111;color:var(--cream)}
+  .slotart{position:relative;flex:0 0 290px}
+  .slotart .reel{position:absolute;top:32.6%;height:24.3%;width:auto;border:0;border-radius:6px;box-shadow:inset 0 0 8px #0005;background:#f3ead2}
+  .slotart .reel svg{width:78%;height:78%}
+  .slotart .r1{left:12.8%;width:19.2%}.slotart .r2{left:33.1%;width:17.3%}.slotart .r3{left:51.4%;width:17.6%}
+  .reel.going svg{filter:blur(1.5px);transform:translateY(2px)}
+  .art img.spin{animation:wob .35s linear infinite}
+  @keyframes wob{0%{transform:rotate(-3deg) scale(1)}50%{transform:rotate(3deg) scale(1.04)}100%{transform:rotate(-3deg) scale(1)}}
+  .grid{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:10px 0;align-items:center}
+  .grid button{min-width:78px}
+  .rd{background:var(--brick)!important;color:var(--cream)!important}.bk{background:#26221a!important;color:var(--cream)!important}
+  .lbl{font-size:14px;color:#cbbf9c;margin-top:6px}
+  .hand{display:flex;gap:6px;justify-content:center;min-height:82px;flex-wrap:wrap;align-items:center}
+  .card{width:54px;height:76px;background:var(--cream);color:var(--ink);border:3px solid var(--ink);border-radius:8px;display:flex;align-items:center;justify-content:center;font:700 20px Georgia,serif;box-shadow:2px 2px 0 #000}
+  .deck{position:relative;width:54px;height:76px;margin:0 auto 6px}
+  .deck .card{position:absolute;left:0;top:0}
+  .deck .card:nth-child(2){left:-2px;top:-2px}.deck .card:nth-child(3){left:-4px;top:-4px}.deck .card:nth-child(4){left:-6px;top:-6px}.deck .card:nth-child(5){left:-8px;top:-8px}
+  .card.r{color:#a82b22}
+  .card.back{color:transparent;background:repeating-linear-gradient(45deg,#a82b22 0 5px,var(--cream) 5px 6px),#a82b22}
+  #coinface{width:150px;height:150px;object-fit:contain;transition:transform .1s}
+  @media(max-width:640px){.game.on{flex-direction:column}.art{flex-basis:auto;width:150px}.slotart{width:260px}}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c" width="992" height="672"></canvas>
+  <div id="hud"><img src="assets/coin_dollar.png" alt="">x <span id="coins">0000</span></div>
+  <div id="lives"></div>
+  <div id="msg"></div>
+</div>
+
+<div id="lobby" class="screen on">
+ <div class="box">
+  <h1>PAC-CASINO</h1>
+  <p class="sub">เก็บเหรียญให้มากที่สุด แล้วเอาไปเสี่ยงโชคในคาสิโน</p>
+  <div class="decor"><img src="assets/slot.png" alt=""><img src="assets/roulette.png" alt=""><img src="assets/cards.png" alt=""></div>
+  <ul class="rules">
+    <li>เดินด้วย <b>ลูกศร / WASD</b> (มือถือปัดนิ้ว) เพื่อกินเหรียญ</li>
+    <li>มี <b>3 ชีวิต</b> ชนผีเสียไป 1 ชีวิต หมดแล้วเกมจบ</li>
+    <li>พอใจเมื่อไรก็เดินเข้า <b>ประตูขาว</b> ของห้องกลางเพื่อเข้าคาสิโน</li>
+    <li>เข้าคาสิโนแล้ว <b>ออกกลับมาเก็บเหรียญไม่ได้</b> ต้องเล่นจนถอนเงิน หรือหมดตัว แล้วสรุปเงินทั้งหมด</li>
+  </ul>
+  <button class="go" id="start">เริ่มเกม</button>
+  <div class="lbl" id="best"></div>
+ </div>
+</div>
+
+<div id="summary" class="screen">
+ <div class="box">
+  <h1 id="sumtitle">สรุปผล</h1>
+  <p class="sub" id="sumreason"></p>
+  <div class="sumrows" id="sumrows"></div>
+  <div class="lbl">เหรียญสุดท้าย</div>
+  <div class="final"><img src="assets/coin_dollar.png" alt=""><span id="sumfinal">0</span></div>
+  <div class="newbest" id="newbest"></div>
+  <button class="go" id="again">กลับไปลอบบี้</button>
+ </div>
+</div>
+
+<div id="casino">
+ <div class="box">
+  <div class="top"><h2>CASINO</h2><div class="bal"><img src="assets/coin_dollar.png" alt=""><span id="bal">0</span></div><button class="exit" id="leave">ถอนเงินและจบเกม</button></div>
+  <div class="tabs" id="tabs"></div>
+
+  <div class="game on" id="g-slot">
+    <div class="art slotart"><img src="assets/slot.png" alt=""><div class="reel r1"></div><div class="reel r2"></div><div class="reel r3"></div></div>
+    <div class="play">
+      <div class="lbl" style="margin-bottom:14px">กดหมุนเพื่อให้ตู้สล็อตหมุนวงล้อ</div>
+      <button class="go" id="spin">หมุน</button>
+      <div class="pay" id="paytable"></div>
+      <div class="lbl">ต้องได้ 3 ตัวเหมือนกันถึงจะจ่าย</div>
+    </div>
+  </div>
+
+  <div class="game" id="g-roul">
+    <div class="art"><img id="rimg" src="assets/roulette.png" alt=""><div class="badge" id="wheel">0</div></div>
+    <div class="play">
+      <div class="lbl">กดช่องที่จะแทง วงล้อหมุนทันที · แดง/ดำ/คู่/คี่/ต่ำ/สูง จ่าย ×2 · แทงเลขจ่าย ×36</div>
+      <div class="grid" id="rbtn"></div>
+      <div class="grid">เลข 0-36 <input id="rnum" type="number" min="0" max="36" value="7" style="width:70px;font:700 20px 'Courier New',monospace;text-align:center;border:3px solid var(--ink);border-radius:8px;background:var(--cream);padding:4px"> <button id="rgo">แทงเลขนี้</button></div>
+    </div>
+  </div>
+
+  <div class="game" id="g-bj">
+    <div class="art" style="flex-basis:140px">
+      <img src="assets/cards.png" alt="" style="width:130px;margin:0 auto 14px">
+      <div class="deck" id="deck"><div class="card back"></div><div class="card back"></div><div class="card back"></div><div class="card back"></div><div class="card back"></div></div>
+      <div class="lbl">กองไพ่</div>
+    </div>
+    <div class="play">
+      <div class="lbl">เจ้ามือ <span id="dsum"></span></div><div class="hand" id="dh"></div>
+      <div class="lbl">คุณ <span id="psum"></span></div><div class="hand" id="ph"></div>
+      <div class="grid"><button class="go" id="deal">แจกไพ่</button><button id="hit" disabled>จั่ว</button><button id="stand" disabled>หยุด</button></div>
+      <div class="lbl">Blackjack จ่าย 3:2 · เจ้ามือจั่วถึง 17</div>
+    </div>
+  </div>
+
+  <div class="game" id="g-flip">
+    <div class="art" style="flex-basis:170px"><img id="coinface" src="assets/coin_dollar.png" alt=""></div>
+    <div class="play">
+      <div class="lbl">เลือกด้านที่จะทาย ชนะจ่าย ×1.95</div>
+      <div class="grid">
+        <button class="go" data-f="H" style="display:flex;align-items:center;gap:8px"><img src="assets/coin_head.png" alt="" height="30">หัว</button>
+        <button class="go" data-f="T" style="display:flex;align-items:center;gap:8px"><img src="assets/coin_dollar.png" alt="" height="30">ก้อย</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="res" id="res"></div>
+
+  <div class="bet" id="betbar">
+    <b>เดิมพัน</b> <input id="bet" type="number" min="1" value="10">
+    <button data-a="1">+1</button><button data-a="10">+10</button><button data-a="100">+100</button>
+    <button data-a="half">½</button><button data-a="dbl">×2</button><button data-a="all">All-in</button>
+  </div>
+ </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+const W = 31, H = 21, T = 32;
+const cv = document.getElementById("c"), ctx = cv.getContext("2d");
+
+// ---------- maze ----------
+const blocks = [
+  [3,2,4,2],[8,2,3,2],[12,2,2,2],[15,2,3,2],[19,2,3,2],[23,2,3,2],[27,2,2,2],
+  [3,5,3,2],[7,5,2,2],[10,5,4,2],[15,5,2,2],[18,5,4,2],[23,5,2,2],[26,5,3,2],
+  [3,8,2,3],[6,8,2,6],[3,12,2,3],
+  [22,8,2,4],[25,8,2,3],[25,12,2,3],[22,13,2,2],
+  [3,16,4,2],[8,16,2,2],[11,16,3,2],[15,16,2,2],[18,16,3,2],[22,16,2,2],[25,16,4,2]
+];
+const ROOM = {x:10,y:8,w:11,h:7}, DOOR = {x:15,y:8};
+const wall = Array.from({length:H}, (_, y) => Array.from({length:W}, (_, x) => x===0||y===0||x===W-1||y===H-1));
+for (const [bx,by,bw,bh] of blocks) for (let y=by;y<by+bh;y++) for (let x=bx;x<bx+bw;x++) wall[y][x]=true;
+for (let y=ROOM.y;y<ROOM.y+ROOM.h;y++) for (let x=ROOM.x;x<ROOM.x+ROOM.w;x++) wall[y][x]=true;
+const isDoor = (x,y) => x===DOOR.x && y===DOOR.y;
+const freePac = (x,y) => x>=0&&y>=0&&x<W&&y<H && (!wall[y][x] || isDoor(x,y));
+const freeGhost = (x,y) => x>=0&&y>=0&&x<W&&y<H && !wall[y][x];
+
+// ---------- state ----------
+let coins = 0, coinMap, pac, ghosts, hurtUntil = 0, inCasino = false, running = false, lives = 3, entryCoins = null, last = performance.now();
+const PAC_START = {x:15,y:19};
+const GHOST_START = [[1,1,"#ff2a2a"],[29,1,"#19d36b"],[1,15,"#ff8a1c"],[29,15,"#1b4fd8"],[15,4,"#ff2a2a"]];
+const DIRS = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
+
+function fillCoins(){
+  coinMap = Array.from({length:H}, (_, y) => Array.from({length:W}, (_, x) => !wall[y][x] && !(x===PAC_START.x&&y===PAC_START.y)));
+}
+function resetActors(){
+  pac = {x:PAC_START.x, y:PAC_START.y, dir:null, next:null, ang:0};
+  ghosts = GHOST_START.map(([x,y,c]) => ({x,y,c,dir:null}));
+}
+fillCoins(); resetActors();
+
+// ---------- HUD ----------
+const coinsEl = document.getElementById("coins"), balEl = document.getElementById("bal"), msgEl = document.getElementById("msg");
+function setCoins(n){ coins = Math.max(0, Math.floor(n)); coinsEl.textContent = String(coins).padStart(4,"0"); balEl.textContent = coins; clampBet(); }
+let msgT;
+function toast(t, ms=1600){ msgEl.textContent = t; msgEl.style.opacity = 1; clearTimeout(msgT); msgT = setTimeout(()=>msgEl.style.opacity=0, ms); }
+
+// ---------- input ----------
+const KEY = {ArrowRight:0,ArrowLeft:1,ArrowDown:2,ArrowUp:3,KeyD:0,KeyA:1,KeyS:2,KeyW:3};
+addEventListener("keydown", e => {
+  if (inCasino || !running) return;
+  if (e.code in KEY){ pac.next = DIRS[KEY[e.code]]; e.preventDefault(); }
+});
+let tx, ty;
+cv.addEventListener("touchstart", e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, {passive:true});
+cv.addEventListener("touchmove", e => {
+  if (inCasino || !running) return;
+  const dx = e.touches[0].clientX - tx, dy = e.touches[0].clientY - ty;
+  if (Math.hypot(dx,dy) > 24){
+    pac.next = Math.abs(dx) > Math.abs(dy) ? (dx>0?DIRS[0]:DIRS[1]) : (dy>0?DIRS[2]:DIRS[3]);
+    tx = e.touches[0].clientX; ty = e.touches[0].clientY;
+  }
+}, {passive:true});
+
+// ---------- movement ----------
+function advance(e, step, chooser){
+  while (step > 1e-9){
+    const aligned = e.x === Math.round(e.x) && e.y === Math.round(e.y);
+    if (aligned){ chooser(e); if (!e.dir) return; }
+    const {x:dx, y:dy} = e.dir;
+    let rem = 1;
+    if (!aligned) rem = dx>0 ? Math.ceil(e.x)-e.x : dx<0 ? e.x-Math.floor(e.x) : dy>0 ? Math.ceil(e.y)-e.y : e.y-Math.floor(e.y);
+    const m = Math.min(step, rem);
+    e.x += dx*m; e.y += dy*m; step -= m;
+    if (Math.abs(e.x-Math.round(e.x))<1e-6) e.x = Math.round(e.x);
+    if (Math.abs(e.y-Math.round(e.y))<1e-6) e.y = Math.round(e.y);
+    if (e === pac) eatAt();
+    if (e === pac && pac.x===DOOR.x && pac.y===DOOR.y){ pac.dir = null; pac.next = null; if (coins < 1) toast("ต้องมีเหรียญก่อนถึงจะเข้าคาสิโนได้"); else openCasino(); return; }
+  }
+}
+function pacChoose(p){
+  if (p.next && freePac(p.x+p.next.x, p.y+p.next.y)) p.dir = p.next;
+  if (p.dir && !freePac(p.x+p.dir.x, p.y+p.dir.y)) p.dir = null;
+  if (p.dir) p.ang = Math.atan2(p.dir.y, p.dir.x);
+}
+function ghostChoose(g){
+  let opts = DIRS.filter(d => freeGhost(g.x+d.x, g.y+d.y));
+  if (g.dir){ const f = opts.filter(d => !(d.x===-g.dir.x && d.y===-g.dir.y)); if (f.length) opts = f; }
+  const near = Math.hypot(g.x-pac.x, g.y-pac.y) < 9;
+  if (near && Math.random() < 0.6){
+    opts.sort((a,b) => Math.hypot(g.x+a.x-pac.x, g.y+a.y-pac.y) - Math.hypot(g.x+b.x-pac.x, g.y+b.y-pac.y));
+    g.dir = opts[0];
+  } else g.dir = opts[Math.floor(Math.random()*opts.length)];
+}
+function eatAt(){
+  const tx = Math.round(pac.x), ty = Math.round(pac.y);
+  if (Math.hypot(pac.x-tx, pac.y-ty) < 0.4 && coinMap[ty][tx]){
+    coinMap[ty][tx] = false; setCoins(coins+1);
+    if (!coinMap.some(r => r.some(Boolean))){ fillCoins(); coinMap[Math.round(pac.y)][Math.round(pac.x)] = false; toast("เหรียญเต็มกระดานอีกครั้ง!"); }
+  }
+}
+
+// ---------- update ----------
+function update(dt){
+  if (inCasino || !running) return;
+  const now = performance.now();
+  // allow instant reversing between tiles
+  if (pac.dir && pac.next && pac.next.x === -pac.dir.x && pac.next.y === -pac.dir.y) { pac.dir = pac.next; pac.ang = Math.atan2(pac.dir.y, pac.dir.x); }
+  advance(pac, 6.2*dt, pacChoose);
+  for (const g of ghosts) advance(g, 4.4*dt, ghostChoose);
+  if (now > hurtUntil){
+    for (const g of ghosts) if (Math.hypot(g.x-pac.x, g.y-pac.y) < 0.7){
+      lives--; renderLives();
+      if (lives <= 0){ endGame("ghost"); return; }
+      toast(`โดนผีจับ! เหลือ ${lives} ชีวิต`);
+      resetActors(); hurtUntil = now + 2000; break;
+    }
+  }
+}
+
+// ---------- drawing ----------
+const IMG = {}; for (const n of ["slot","cards","roulette","coin_dollar","coin_head"]){ IMG[n] = new Image(); IMG[n].src = "assets/"+n+".png"; }
+const coinSpr = document.createElement("canvas"); coinSpr.width = coinSpr.height = 28;
+{ const c = coinSpr.getContext("2d");
+  c.fillStyle="#b8791a"; c.beginPath(); c.arc(14,14,13.5,0,7); c.fill();
+  c.fillStyle="#f7b92b"; c.beginPath(); c.arc(14,14,11.5,0,7); c.fill();
+  c.strokeStyle="#fff1a8"; c.lineWidth=1.5; c.beginPath(); c.arc(14,14,9,0,7); c.stroke();
+  c.fillStyle="#fff1a8"; c.font="bold 14px sans-serif"; c.textAlign="center"; c.textBaseline="middle"; c.fillText("$",14,15); }
+
+function rr(x,y,w,h,r){ ctx.beginPath(); ctx.roundRect(x,y,w,h,r); }
+function drawMaze(){
+  ctx.strokeStyle = "#10c070"; ctx.lineWidth = 4; ctx.setLineDash([4,7]); ctx.lineCap = "round";
+  rr(10,10,W*T-20,H*T-20,26); ctx.stroke();
+  rr(T-6,T-6,(W-2)*T+12,(H-2)*T+12,20); ctx.stroke();
+  for (const [bx,by,bw,bh] of blocks){ rr(bx*T+5,by*T+5,bw*T-10,bh*T-10,14); ctx.stroke(); }
+  rr(ROOM.x*T+5,ROOM.y*T+5,ROOM.w*T-10,ROOM.h*T-10,10); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle="#000"; ctx.fillRect(DOOR.x*T, ROOM.y*T, T, 10);
+  ctx.strokeStyle="#fff"; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(DOOR.x*T, ROOM.y*T+5); ctx.lineTo((DOOR.x+1)*T, ROOM.y*T+5); ctx.stroke();
+  // room decor (images from assets/)
+  const im = n => IMG[n].complete && IMG[n].naturalWidth ? IMG[n] : null;
+  const put = (n,x,y,w) => { const i = im(n); if (i) ctx.drawImage(i, x, y, w, w*i.naturalHeight/i.naturalWidth); };
+  put("slot", 362, 294, 82); put("cards", 548, 292, 84); put("roulette", 520, 362, 100);
+  put("coin_dollar", 366, 420, 28); put("coin_dollar", 396, 424, 28); put("coin_head", 456, 420, 28);
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.font="bold 18px Georgia,serif"; ctx.fillStyle="#f7b92b"; ctx.fillText("CASINO", 490, 335);
+}
+function drawGhost(g, t){
+  const px = g.x*T+T/2, py = g.y*T+T/2, r = 11;
+  ctx.fillStyle = g.c; ctx.beginPath(); ctx.arc(px, py-2, r, Math.PI, 0);
+  ctx.lineTo(px+r, py+r); const n=4;
+  for (let i=0;i<n;i++){ const x0 = px+r-(i*2*r/n); ctx.lineTo(x0-r/n, py+r-5+(i%2?0:0)); ctx.lineTo(x0-2*r/n, py+r); }
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle="#111"; ctx.fillRect(px-7,py-7,5,3); ctx.fillRect(px+2,py-7,5,3);
+  ctx.fillRect(px-6,py-4,4,4); ctx.fillRect(px+2,py-4,4,4);
+}
+function draw(t){
+  ctx.fillStyle="#000"; ctx.fillRect(0,0,cv.width,cv.height);
+  drawMaze();
+  for (let y=0;y<H;y++) for (let x=0;x<W;x++) if (coinMap[y][x]) ctx.drawImage(IMG.coin_dollar.complete && IMG.coin_dollar.naturalWidth ? IMG.coin_dollar : coinSpr, x*T+3, y*T+3, 26, 26);
+  for (const g of ghosts) drawGhost(g, t);
+  // pacman
+  const blink = performance.now() < hurtUntil && Math.floor(t/120)%2;
+  if (!blink){
+    const px = pac.x*T+T/2, py = pac.y*T+T/2, m = pac.dir ? Math.abs(Math.sin(t/70))*0.38+0.03 : 0.25;
+    ctx.fillStyle = "#ff2a2a"; ctx.beginPath(); ctx.moveTo(px,py);
+    ctx.arc(px,py,14,pac.ang+m,pac.ang+Math.PI*2-m); ctx.closePath(); ctx.fill();
+  }
+}
+function loop(now){
+  const dt = Math.min(0.1,(now-last)/1000); last = now;
+  update(dt); draw(now); requestAnimationFrame(loop);
+}
+
+// ---------- casino ----------
+const casino = document.getElementById("casino"), resEl = document.getElementById("res"), betEl = document.getElementById("bet");
+const tabs = [["slot","สล็อต","slot"],["roul","รูเล็ต","roulette"],["bj","แบล็คแจ็ค","cards"],["flip","โยนเหรียญ","coin_head"]];
+const tabsEl = document.getElementById("tabs");
+let busy = false;
+tabs.forEach(([id,label,img],i) => { const b = document.createElement("button"); b.innerHTML = `<img src="assets/${img}.png" alt="">${label}`; b.dataset.id = id; if(!i) b.classList.add("act");
+  b.onclick = () => { if (busy || bj.active) return; showGame(id); }; tabsEl.appendChild(b); });
+function showGame(id){
+  tabsEl.querySelectorAll("button").forEach(b => b.classList.toggle("act", b.dataset.id===id));
+  document.querySelectorAll(".game").forEach(g => g.classList.toggle("on", g.id==="g-"+id));
+  say("");
+}
+function say(t, cls=""){ resEl.textContent = t; resEl.className = "res "+cls; }
+function openCasino(){
+  inCasino = true; entryCoins = coins; casino.classList.add("on"); busy = false; clampBet();
+  say("เข้ามาแล้วออกไปเก็บเหรียญเพิ่มไม่ได้ — พอใจเมื่อไรกด ถอนเงินและจบเกม");
+}
+const leaveBtn = document.getElementById("leave"); let armT;
+leaveBtn.onclick = () => {
+  if (busy || bj.active) return;
+  if (!leaveBtn.dataset.armed){
+    leaveBtn.dataset.armed = 1; leaveBtn.textContent = "กดอีกครั้งเพื่อยืนยัน";
+    armT = setTimeout(disarm, 3000); return;
+  }
+  disarm(); endGame("cashout");
+};
+function disarm(){ clearTimeout(armT); delete leaveBtn.dataset.armed; leaveBtn.textContent = "ถอนเงินและจบเกม"; }
+
+// ---------- lobby / game flow ----------
+const lobbyEl = document.getElementById("lobby"), summaryEl = document.getElementById("summary");
+const livesEl = document.getElementById("lives");
+function renderLives(){ livesEl.innerHTML = [0,1,2].map(i => `<div class="life${i<lives?"":" lost"}"></div>`).join(""); }
+const bestKey = "pacCasinoBest";
+const getBest = () => { try { return +localStorage.getItem(bestKey) || 0; } catch (e) { return 0; } };
+const saveBest = n => { try { localStorage.setItem(bestKey, n); } catch (e) {} };
+function showBest(){ const b = getBest(); document.getElementById("best").textContent = b ? `สถิติสูงสุด: ${b} เหรียญ` : ""; }
+function startGame(){
+  lives = 3; entryCoins = null; fillCoins(); resetActors(); setCoins(0); renderLives();
+  for (const id of ["dh","ph"]) document.getElementById(id).innerHTML = "";
+  bj.active = false; bj.p = []; bj.d = []; sums(true); dealBtn.disabled = false; hitBtn.disabled = standBtn.disabled = true;
+  disarm(); say(""); showGame("slot");
+  inCasino = false; casino.classList.remove("on"); lobbyEl.classList.remove("on"); summaryEl.classList.remove("on");
+  hurtUntil = performance.now() + 1500; running = true;
+}
+function endGame(reason){
+  if (!running) return;
+  running = false; inCasino = false; casino.classList.remove("on"); disarm();
+  const final = coins, collected = entryCoins ?? coins, net = final - collected;
+  const title = {ghost:"เกมจบ", cashout:"สรุปผล", broke:"หมดตัว"}[reason];
+  const why = {ghost:"ผีจับครบ 3 ครั้งแล้ว", cashout:"คุณถอนเงินออกจากคาสิโน", broke:"เหรียญหมดแล้ว เสียหมดตัวในคาสิโน"}[reason];
+  document.getElementById("sumtitle").textContent = title;
+  document.getElementById("sumreason").textContent = why;
+  const sign = n => (n > 0 ? "+" : "") + n;
+  document.getElementById("sumrows").innerHTML =
+    `<div><span>เหรียญที่เก็บได้ในเขาวงกต</span><b>${collected}</b></div>` +
+    (entryCoins === null ? `<div><span>คาสิโน</span><b>ไม่ได้เข้า</b></div>` : `<div><span>ผลจากคาสิโน</span><b class="${net>0?"pos":net<0?"neg":""}">${sign(net)}</b></div>`) +
+    `<div><span>ชีวิตที่เหลือ</span><b>${Math.max(0,lives)} / 3</b></div>`;
+  document.getElementById("sumfinal").textContent = final;
+  const isBest = final > getBest(); if (isBest) saveBest(final);
+  document.getElementById("newbest").textContent = isBest && final > 0 ? "สถิติใหม่!" : "";
+  summaryEl.classList.add("on");
+}
+document.getElementById("start").onclick = startGame;
+document.getElementById("again").onclick = () => { summaryEl.classList.remove("on"); lobbyEl.classList.add("on"); showBest(); };
+addEventListener("keydown", e => { if (e.code === "Enter" && lobbyEl.classList.contains("on")) startGame(); });
+showBest(); renderLives();
+function bet(){ return Math.max(1, Math.floor(+betEl.value || 0)); }
+function clampBet(){ if (+betEl.value > coins) betEl.value = Math.max(1, coins); if (+betEl.value < 1) betEl.value = 1; }
+document.getElementById("betbar").addEventListener("click", e => {
+  const a = e.target.dataset.a; if (!a || busy || bj.active) return;
+  let v = bet();
+  v = a==="half" ? Math.floor(v/2) : a==="dbl" ? v*2 : a==="all" ? coins : v + +a;
+  betEl.value = Math.max(1, Math.min(coins || 1, v));
+});
+betEl.addEventListener("change", clampBet);
+function canBet(){
+  if (busy) return false;
+  if (coins < 1){ say("คุณไม่มีเหรียญแล้ว", "lose"); return false; }
+  clampBet(); if (bet() > coins){ say("เหรียญไม่พอ","lose"); return false; } return true;
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function settle(b, payout, label){
+  setCoins(coins + payout);
+  if (coins === 0){ say(`${label} หมดตัวแล้ว!`, "lose"); setTimeout(() => endGame("broke"), 2000); }
+  else if (payout > b) say(`${label} ชนะ +${payout-b} เหรียญ!`, "win");
+  else if (payout === b) say(`${label} เสมอ (ได้คืน)`, "push");
+  else say(`${label} เสีย -${b-payout} เหรียญ`, "lose");
+}
+
+// slots (hand-drawn style SVG symbols, no emoji)
+const S = (body) => `<svg viewBox="0 0 64 64" stroke="#14110a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">${body}</svg>`;
+const SYM = [
+  ["cherry", 5,  S('<path d="M22 44 Q26 18 42 10 M44 46 Q42 22 42 10" fill="none"/><path d="M42 10 Q54 8 56 16 Q46 18 42 10Z" fill="#5b8a3a"/><circle cx="21" cy="46" r="11" fill="#d93a2b"/><circle cx="44" cy="48" r="11" fill="#d93a2b"/>')],
+  ["lemon",  8,  S('<path d="M8 32 Q12 14 32 14 Q52 14 56 32 Q52 50 32 50 Q12 50 8 32Z" fill="#f3d03e"/><path d="M8 32 L2 30 M56 32 L62 34" fill="none"/><path d="M22 26 Q30 20 40 24" fill="none" stroke="#fff6c2"/>')],
+  ["bell",   15, S('<path d="M32 8 Q18 10 18 30 L18 42 L10 50 L54 50 L46 42 L46 30 Q46 10 32 8Z" fill="#e8a825"/><circle cx="32" cy="55" r="5" fill="#e8a825"/><path d="M26 18 Q22 24 22 32" fill="none" stroke="#fff1a8"/>')],
+  ["star",   25, S('<path d="M32 6 L39 24 L58 25 L43 37 L48 56 L32 45 L16 56 L21 37 L6 25 L25 24Z" fill="#f7c948"/>')],
+  ["seven",  60, S('<path d="M12 12 L52 12 L52 20 L30 56 L18 56 L38 22 L12 22Z" fill="#d93a2b"/>')]
+];
+document.getElementById("paytable").innerHTML = SYM.map(([,m,svg]) => `<span>${svg}×${m}</span>`).join("");
+const reels = [...document.querySelectorAll(".reel")];
+reels.forEach((r,i) => r.innerHTML = SYM[[0,1,4][i]][2]);
+document.getElementById("spin").onclick = async () => {
+  if (!canBet()) return; busy = true; const b = bet(); setCoins(coins-b); say("กำลังหมุน…");
+  const res = [0,0,0].map(() => Math.floor(Math.random()*5));
+  for (let i=0;i<3;i++){
+    const end = performance.now() + 700 + i*450;
+    reels[i].classList.add("going");
+    while (performance.now() < end){ reels[i].innerHTML = SYM[Math.floor(Math.random()*5)][2]; await sleep(70); }
+    reels[i].classList.remove("going"); reels[i].innerHTML = SYM[res[i]][2];
+  }
+  busy = false;
+  settle(b, res[0]===res[1] && res[1]===res[2] ? b*SYM[res[0]][1] : 0, "สล็อต");
+};
+
+// roulette
+const REDS = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+const rbtn = document.getElementById("rbtn"), wheel = document.getElementById("wheel"), rimg = document.getElementById("rimg");
+const rbets = [["แดง","rd",n=>REDS.has(n)],["ดำ","bk",n=>n>0&&!REDS.has(n)],["คู่",0,n=>n>0&&n%2===0],["คี่",0,n=>n%2===1],["1-18",0,n=>n>=1&&n<=18],["19-36",0,n=>n>=19]];
+rbets.forEach(([l,c,f]) => { const b = document.createElement("button"); b.textContent = l; if (c) b.className = c; b.onclick = () => roulette(f, 2, l); rbtn.appendChild(b); });
+document.getElementById("rgo").onclick = () => { const n = Math.max(0, Math.min(36, Math.floor(+document.getElementById("rnum").value||0))); roulette(x => x===n, 36, "เลข "+n); };
+async function roulette(win, mult, label){
+  if (!canBet()) return; busy = true; const b = bet(); setCoins(coins-b); say("ลูกบอลกำลังหมุน…"); rimg.classList.add("spin");
+  const n = Math.floor(Math.random()*37), end = performance.now()+2200;
+  while (performance.now() < end){ const r = Math.floor(Math.random()*37); setWheel(r); await sleep(60 + (end-performance.now()<700?80:0)); }
+  setWheel(n); rimg.classList.remove("spin"); busy = false;
+  const col = n===0 ? "เขียว" : REDS.has(n) ? "แดง" : "ดำ";
+  settle(b, win(n) ? b*mult : 0, `ออก ${n} (${col}) · แทง${label}:`);
+}
+function setWheel(n){ wheel.textContent = n; wheel.style.background = n===0 ? "#2f6b2f" : REDS.has(n) ? "#a82b22" : "#111"; }
+
+// coin flip (images from assets: portrait = heads, dollar = tails)
+document.querySelectorAll("[data-f]").forEach(btn => btn.onclick = async () => {
+  if (!canBet()) return; busy = true; const b = bet(); setCoins(coins-b); say("กำลังโยน…");
+  const face = document.getElementById("coinface"), heads = Math.random() < 0.5;
+  for (let i=0;i<10;i++){ face.style.transform = "scaleX(0.05)"; await sleep(60); face.src = i%2 ? "assets/coin_dollar.png" : "assets/coin_head.png"; face.style.transform = "scaleX(1)"; await sleep(80); }
+  face.src = heads ? "assets/coin_head.png" : "assets/coin_dollar.png"; busy = false;
+  const won = (btn.dataset.f==="H") === heads;
+  settle(b, won ? Math.floor(b*1.95) : 0, heads ? "ออกหัว" : "ออกก้อย");
+});
+
+// blackjack
+const bj = {active:false, deck:[], p:[], d:[], bet:0, hole:null};
+const dealBtn = document.getElementById("deal"), hitBtn = document.getElementById("hit"), standBtn = document.getElementById("stand");
+const dhEl = document.getElementById("dh"), phEl = document.getElementById("ph"), deckEl = document.getElementById("deck");
+function newDeck(){ const d=[]; for (const s of ["\u2660\uFE0E","\u2665\uFE0E","\u2666\uFE0E","\u2663\uFE0E"]) for (const r of ["A","2","3","4","5","6","7","8","9","10","J","Q","K"]) d.push({r,s}); for (let i=d.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [d[i],d[j]]=[d[j],d[i]]; } return d; }
+function val(h){ let t=0,a=0; for (const c of h){ if (c.r==="A"){a++;t+=11;} else t += "JQK".includes(c.r) ? 10 : +c.r; } while (t>21&&a){t-=10;a--;} return t; }
+function cardEl(c){ const e = document.createElement("div"); e.className = "card back"+(/[\u2665\u2666]/.test(c.s)?" r":""); e.textContent = c.r+c.s; return e; }
+function sums(hideDealer){
+  document.getElementById("dsum").textContent = bj.d.length ? "(" + (hideDealer ? "?" : val(bj.d)) + ")" : "";
+  document.getElementById("psum").textContent = bj.p.length ? "(" + val(bj.p) + ")" : "";
+}
+async function flip(el){
+  await el.animate([{transform:"scaleX(1)"},{transform:"scaleX(0)"}], {duration:130, fill:"forwards"}).finished;
+  el.classList.remove("back");
+  await el.animate([{transform:"scaleX(0)"},{transform:"scaleX(1)"}], {duration:130, fill:"forwards"}).finished;
+  el.getAnimations().forEach(a => a.cancel());
+}
+// card slides from the deck pile into the hand, then flips face-up (unless hidden)
+async function addCard(handEl, c, hidden){
+  const el = cardEl(c); handEl.appendChild(el);
+  const from = deckEl.getBoundingClientRect(), to = el.getBoundingClientRect();
+  await el.animate([
+    {transform:`translate(${from.left-to.left}px,${from.top-to.top}px) rotate(-14deg)`, opacity:.7},
+    {transform:"translate(0,0) rotate(0deg)", opacity:1}
+  ], {duration:380, easing:"cubic-bezier(.2,.8,.3,1)"}).finished;
+  if (!hidden) await flip(el);
+  return el;
+}
+dealBtn.onclick = async () => {
+  if (!canBet()) return;
+  bj.bet = bet(); setCoins(coins-bj.bet); bj.active = true; dealBtn.disabled = true;
+  bj.deck = newDeck(); bj.p = []; bj.d = []; dhEl.innerHTML = phEl.innerHTML = ""; sums(true); say("กำลังแจกไพ่…");
+  for (const [hand, arr, hidden] of [[phEl,bj.p,0],[dhEl,bj.d,0],[phEl,bj.p,0],[dhEl,bj.d,1]]){
+    const c = bj.deck.pop(); arr.push(c);
+    const el = await addCard(hand, c, hidden); if (hidden) bj.hole = el;
+    sums(true); await sleep(120);
+  }
+  if (val(bj.p) === 21) return finishBJ();
+  hitBtn.disabled = standBtn.disabled = false; say("จั่วหรือหยุด?");
+};
+hitBtn.onclick = async () => {
+  hitBtn.disabled = standBtn.disabled = true;
+  const c = bj.deck.pop(); bj.p.push(c); await addCard(phEl, c, 0); sums(true);
+  if (val(bj.p) >= 21) finishBJ(); else hitBtn.disabled = standBtn.disabled = false;
+};
+standBtn.onclick = finishBJ;
+async function finishBJ(){
+  hitBtn.disabled = standBtn.disabled = true;
+  const pv = val(bj.p), pBJ = pv===21 && bj.p.length===2, dBJ = val(bj.d)===21 && bj.d.length===2;
+  await flip(bj.hole); sums(false); await sleep(350);
+  if (pv <= 21 && !pBJ) while (val(bj.d) < 17){ const c = bj.deck.pop(); bj.d.push(c); await addCard(dhEl, c, 0); sums(false); await sleep(250); }
+  const dv = val(bj.d); let pay, lab;
+  if (pv > 21){ pay=0; lab="ไพ่เกิน 21 (Bust)"; }
+  else if (pBJ && !dBJ){ pay=Math.floor(bj.bet*2.5); lab="Blackjack!"; }
+  else if (dBJ && !pBJ){ pay=0; lab="เจ้ามือ Blackjack"; }
+  else if (dv > 21){ pay=bj.bet*2; lab="เจ้ามือ Bust"; }
+  else if (pv > dv){ pay=bj.bet*2; lab=`${pv} ชนะ ${dv}`; }
+  else if (pv === dv){ pay=bj.bet; lab="เสมอ"; }
+  else { pay=0; lab=`${pv} แพ้ ${dv}`; }
+  bj.active = false; dealBtn.disabled = false; settle(bj.bet, pay, lab+" ·");
+}
+
+setCoins(coins);
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
